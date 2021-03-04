@@ -46,6 +46,8 @@ plugins:
   - serverless-rust
 
 functions:
+  notification:
+    handler: notification
   hello:
     # handler value syntax is `{cargo-package-name}.{bin-name}`
     # or `{cargo-package-name}` for short when you are building a

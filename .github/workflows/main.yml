@@ -1,0 +1,153 @@
+name: Main
+
+on: push
+
+jobs:
+  check_lambda_files:
+    name: Check Lambda source code
+    outputs:
+      run_job: ${{ steps.check_lambda_files.outputs.run_job }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+
+      - name: Check modified AWS Lambda Source Code
+        id: check_lambda_files
+        run: |
+          echo "=============== list modified files ==============="
+          git diff --name-only HEAD^ HEAD
+
+          echo "========== check paths of modified files =========="
+          git diff --name-only HEAD^ HEAD > files.txt
+          while IFS= read -r file
+          do
+            echo $file
+            if [[ $file == tfe-api/* ]]; then
+              echo "This modified file is not Lambda source code"
+              echo "::set-output name=run_job::false"
+              break
+            else
+              echo "::set-output name=run_job::true"
+            fi
+          done < files.txt
+
+  codestyle:
+    runs-on: ubuntu-latest
+    needs: [ check_lambda_files ]
+    if: needs.check_lambda_files.outputs.run_job == 'true'
+    steps:
+      - name: Set up Rust
+        uses: hecrj/setup-rust-action@v1
+        with:
+          components: rustfmt
+      - uses: actions/checkout@v2
+      - run: cargo fmt --all -- --check
+
+  lint:
+    runs-on: ubuntu-latest
+    needs: [ check_lambda_files ]
+    if: needs.check_lambda_files.outputs.run_job == 'true'
+    steps:
+      - name: Set up Rust
+        uses: hecrj/setup-rust-action@v1
+        with:
+          components: clippy
+      - uses: actions/checkout@v2
+      - run: cargo clippy --all-targets -- -D clippy::all
+
+  compile:
+    runs-on: ubuntu-latest
+    needs: [ check_lambda_files ]
+    if: needs.check_lambda_files.outputs.run_job == 'true'
+    steps:
+      - name: Set up Rust
+        uses: hecrj/setup-rust-action@v1
+      - uses: actions/checkout@v2
+      - run: cargo check --all
+
+  test:
+    needs: [codestyle, lint, compile]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Setup Rust
+      uses: hecrj/setup-rust-action@v1
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Test
+      run: cargo test
+  # deploy on pushes to master branch
+  # assumes aws credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) are set in github secrets
+  push:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - name: Set up Rust
+        uses: hecrj/setup-rust-action@v1
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build and Push
+        if: env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          #STAGE: prod
+        run: |
+          npm install
+          npx serverless package
+          aws s3 cp target/lambda/release/hello.zip s3://479284709538-us-west-2-aws-lambda/terraform-api/latest/hello.zip
+          aws s3 cp target/lambda/release/world.zip s3://479284709538-us-west-2-aws-lambda/terraform-api/latest/world.zip
+          aws s3 cp target/lambda/release/world.zip s3://479284709538-us-west-2-aws-lambda/terraform-api/latest/notification.zip
+#         aws s3 rm --recursive s3://479284709538-us-west-2-aws-lambda/terraform-api/latest
+
+  check_tfe_api_files:
+    name: Check TFE API Config files
+    outputs:
+      run_job: ${{ steps.check_tfe_api_files.outputs.run_job }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+
+      - name: Check modified TFE Api Config files
+        id: check_tfe_api_files
+        run: |
+          echo "=============== list modified files ==============="
+          git diff --name-only HEAD^ HEAD
+
+          echo "========== check paths of modified files =========="
+          git diff --name-only HEAD^ HEAD > files.txt
+          while IFS= read -r file
+          do
+            echo $file
+            if [[ $file != tfe-api/* ]]; then
+              echo "This modified file is not under the 'tfe-api' folder."
+              echo "::set-output name=run_job::false"
+              break
+            else
+              echo "::set-output name=run_job::true"
+            fi
+          done < files.txt
+
+  tfe_api_run:
+    name: Job for 'tfe-api' folder
+    needs: [check_tfe_api_files]
+    if: needs.check_tfe_api_files.outputs.run_job == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: run for 'tfe-api' folder
+        run: echo "This job runs only when all the modified files are under the 'tfe-api' folder."
+
+      - name: Terraform run
+        uses: kvrhdn/tfe-run@v1
+        with:
+          token: ${{ secrets.TFE_TOKEN }}
+          workspace: terraform-api-aws-lambda
+          message: |
+            Run triggered using tfe-run (commit: ${{ github.SHA }})
+        id: tfe-run
