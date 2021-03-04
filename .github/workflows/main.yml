@@ -42,11 +42,8 @@ jobs:
     - name: Test
       run: cargo test
   # deploy on pushes to master branch
-  # assumes aws credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-  # are configured in travis settings
-  # see https://serverless.com/framework/docs/providers/aws/guide/credentials/
-  # for more information
-  deploy:
+  # assumes aws credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) are set in github secrets
+  push:
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     needs: [test]
@@ -55,13 +52,16 @@ jobs:
         uses: hecrj/setup-rust-action@v1
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Deploy
+      - name: Build and Push
         if: env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: us-east-1
           #STAGE: prod
         run: |
           npm install
-          npx serverless deploy --conceal
+          npx serverless package
+          aws s3 cp target/lambda/release/hello.zip s3://479284709538-us-west-2-aws-lambda/terraform-api/latest/hello.zip
+          aws s3 cp target/lambda/release/world.zip s3://479284709538-us-west-2-aws-lambda/terraform-api/latest/world.zip
+          aws s3 cp target/lambda/release/world.zip s3://479284709538-us-west-2-aws-lambda/terraform-api/latest/notification.zip
+#         aws s3 rm --recursive s3://479284709538-us-west-2-aws-lambda/terraform-api/latest

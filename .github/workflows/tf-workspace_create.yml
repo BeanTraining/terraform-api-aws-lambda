@@ -1,0 +1,33 @@
+name: Create TFC Workspace
+on:
+  workflow_dispatch:
+    inputs:
+      organisation:
+        description: 'TFC Organisation'
+        required: true
+        default: 'BeanTraining'
+      tfe_token:
+        required: false
+        description: 'TFE Token'
+jobs:
+  printInputs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Create TFC Workspace from input
+        if: github.event.inputs.tfe_token
+        uses: sarathkrish/create-terraform-workspace@v1.2
+        with:
+          workSpaceName: MyTestWorkspace
+          organizationName: ${{github.event.inputs.organisation}}
+          terraformToken: ${{github.event.inputs.tfe_token}}
+          terraformHost: 'app.terraform.io'
+      - name: Create TFC Workspace from secrets
+        if: github.event.inputs.tfe_token == null
+        uses: sarathkrish/create-terraform-workspace@v1.2
+        with:
+          workSpaceName: MyTestWorkspace
+          organizationName: ${{github.event.inputs.organisation}}
+          terraformToken: ${{secrets.TFE_TOKEN}}
+          terraformHost: 'app.terraform.io'

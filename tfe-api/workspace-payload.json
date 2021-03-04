@@ -1,0 +1,15 @@
+{
+  "data": {
+    "attributes": {
+      "name": "workspace-2",
+      "terraform_version": "0.14.8",
+      "working-directory": "tfe-api",
+      "vcs-repo": {
+        "identifier": "BeanTraining/terraform-api-aws-lambda",
+        "oauth-token-id": "ot-hmAyP66qk2AMVdbJ",
+        "branch": ""
+      }
+    },
+    "type": "workspaces"
+  }
+}
