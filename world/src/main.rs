@@ -129,7 +129,7 @@ async fn world(request: Request, _: Context) -> Result<impl IntoResponse, Error>
     // `serde_json::Values` impl `IntoResponse` by default
     // creating an application/json response
     Ok(json!({
-    "message": "Go Serverless v1.5! Your function executed successfully!",
+    "message": "Go Serverless v1.6! In world function. Your function executed successfully!",
     "contents": "From EFS ".to_owned() + &something
     }))
 }
