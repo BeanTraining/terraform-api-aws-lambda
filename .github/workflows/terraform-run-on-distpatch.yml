@@ -1,17 +1,39 @@
 name: Terraform Apply
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      organisation:
+        description: 'TFC Organisation'
+        required: true
+        default: 'BeanTraining'
+      message:
+        required: true
+        description: 'Run Message'
+        default: 'Automatically queued from Github Action'
 jobs:
   tfe_api_run:
     name: Job for 'tfe-api' folder
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
       - name: Terraform run
         env:
           TOKEN: ${{ secrets.TFE_TOKEN }}
+          WS_ID: ${{ secrets.TFE_API_LAMBDA_WS }}
         id: tfe-run
         run: |
           echo "=============== Set Workspace ID ==============="
           cp .github/workflows/payload-run-post.json ./payload.json
-          sed -i 's/ws-id/ws-abc/g' ./payload.json
+          sed -i 's/ws-id/${{secrets.TFE_API_LAMBDA_WS}}/g' ./payload.json
+          sed -i 's/run-message/${{github.event.inputs.tfe_workspace}}/g' ./payload.json
           cat ./payload.json
-          echo "========== check paths of modified files =========="
+          echo "========== Post Run =========="
+          curl \
+            --header "Authorization: Bearer $TOKEN" \
+            --header "Content-Type: application/vnd.api+json" \
+            --request POST \
+            --data @payload.json \
+            https://app.terraform.io/api/v2/runs
+

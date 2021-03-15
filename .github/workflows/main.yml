@@ -25,7 +25,7 @@ jobs:
           while IFS= read -r file
           do
             echo $file
-            if [[ $file == tfe-api/* ]]; then
+            if [[ $file == tfe-api/* || $file == .github/*  ]]; then
               echo "This modified file is not Lambda source code"
               echo "::set-output name=run_job::false"
               break

@@ -2,7 +2,7 @@
   "data": {
     "attributes": {
       "is-destroy": false,
-      "message": "Custom message"
+      "message": "run-message"
     },
     "type":"runs",
     "relationships": {
