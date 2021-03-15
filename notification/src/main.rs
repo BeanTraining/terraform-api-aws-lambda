@@ -68,7 +68,6 @@ async fn notification(request: Request, _: Context) -> Result<impl IntoResponse,
         println!("Body content: {}", payload_content.as_str());
     };
 
-    // let contents = "hello world!!!!!!!";
     // `serde_json::Values` impl `IntoResponse` by default
     // creating an application/json response
     Ok(json!({

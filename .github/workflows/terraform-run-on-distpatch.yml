@@ -1,0 +1,17 @@
+name: Terraform Apply
+on: workflow_dispatch
+jobs:
+  tfe_api_run:
+    name: Job for 'tfe-api' folder
+    runs-on: ubuntu-latest
+    steps:
+      - name: Terraform run
+        env:
+          TOKEN: ${{ secrets.TFE_TOKEN }}
+        id: tfe-run
+        run: |
+          echo "=============== Set Workspace ID ==============="
+          cp .github/workflows/payload-run-post.json ./payload.json
+          sed -i 's/ws-id/ws-abc/g' ./payload.json
+          cat ./payload.json
+          echo "========== check paths of modified files =========="
