@@ -71,7 +71,7 @@ async fn notification(request: Request, _: Context) -> Result<impl IntoResponse,
     // `serde_json::Values` impl `IntoResponse` by default
     // creating an application/json response
     Ok(json!({
-    "message": "Go Serverless v1.3! Your function executed successfully!",
+    "message": "Go Serverless v1.2! Your function executed successfully!",
     "contents": "From EFS " //.to_owned() + secret.as_str()
     }))
 }
