@@ -41,7 +41,7 @@ resource "aws_security_group" "sg_for_lambda" {
   name        = "sg_for_lambdaV1"
   description = "sg_for_lambda"
   vpc_id      = aws_vpc.vpc_for_lambda.id
-   ingress {
+  ingress {
     description = "NFS"
     from_port   = 2049
     to_port     = 2049
@@ -55,7 +55,7 @@ resource "aws_security_group" "sg_for_lambda" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-    lifecycle {
+  lifecycle {
     create_before_destroy = true
   }
 }
