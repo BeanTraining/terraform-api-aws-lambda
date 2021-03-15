@@ -2,10 +2,6 @@ name: Terraform Apply
 on:
   workflow_dispatch:
     inputs:
-      organisation:
-        description: 'TFC Organisation'
-        required: true
-        default: 'BeanTraining'
       message:
         required: true
         description: 'Run Message'
@@ -27,7 +23,7 @@ jobs:
           echo "=============== Set Workspace ID ==============="
           cp .github/workflows/payload-run-post.json ./payload.json
           sed -i 's/ws-id/${{secrets.TFE_API_LAMBDA_WS}}/g' ./payload.json
-          sed -i 's/run-message/${{github.event.inputs.tfe_workspace}}/g' ./payload.json
+          sed -i 's/run-message/${{github.event.inputs.message}}/g' ./payload.json
           cat ./payload.json
           echo "========== Post Run =========="
           curl \
