@@ -1,19 +1,18 @@
-extern crate crypto;
+extern crate hex;
+extern crate hmac;
 extern crate rustc_serialize;
+extern crate sha2;
 
-use crypto::hmac::Hmac;
-use crypto::mac::Mac;
-use crypto::sha2::Sha512;
+use hmac::{Hmac as MyHmac, Mac as MyMac, NewMac};
 use lambda_http::ext::PayloadError;
 use lambda_http::{handler, lambda, Context, IntoResponse, Request, RequestExt};
 use rustc_serialize::base64::{ToBase64, STANDARD};
-use rustc_serialize::hex::ToHex;
-use rustc_serialize::json::ToJson;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::env;
-use std::fs::File;
-use std::io::prelude::*;
+use sha2::Sha512 as MySha512;
+// use std::env;
+// use std::fs::File;
+// use std::io::prelude::*;
 
 type Error = Box<dyn std::error::Error + Sync + Send + 'static>;
 
@@ -24,9 +23,8 @@ async fn main() -> Result<(), Error> {
 }
 
 async fn world(request: Request, _: Context) -> Result<impl IntoResponse, Error> {
-    let secret = env::var("API_KEY").unwrap();
-
-    let something_param = request.query_string_parameters();
+    // let secret = env::var("API_KEY").unwrap();
+    // let something_param = request.query_string_parameters();
     let headers = request.headers();
     let mut tfe_signature: String = String::from("");
     let mut header_names = "".to_owned();
@@ -44,14 +42,44 @@ async fn world(request: Request, _: Context) -> Result<impl IntoResponse, Error>
     header_names.push_str(" <<<<<<< TOKEN IS HERE >>>>>> ");
     header_names.push_str(tfe_signature.as_str());
 
-    let hmac_key = Vec::from("123");
-    let message = request.body().to_json().to_string();
+    let hmac_key = b"123";
+    // let message = "{\"payload_version\":1,\"notification_configuration_id\":\"nc-HUF6ozX14EHzjB8p\",\"run_url\":\"https://app.terraform.io/app/BeanTraining/sg-dev-main-apps-example/runs/run-sabKBrwfmk8mWBHt\",\"run_id\":\"run-sabKBrwfmk8mWBHt\",\"run_message\":\"Queued manually in Terraform Cloud\",\"run_created_at\":\"2021-03-16T15:19:01.000Z\",\"run_created_by\":\"peterbean410\",\"workspace_id\":\"ws-BpcTcWRAHe5L6akf\",\"workspace_name\":\"sg-dev-main-apps-example\",\"organization_name\":\"BeanTraining\",\"notifications\":[{\"message\":\"Run Planning\",\"trigger\":\"run:planning\",\"run_status\":\"planning\",\"run_updated_at\":\"2021-03-16T15:19:03.000Z\",\"run_updated_by\":null}]}".to_owned();
+    let message = serde_json::to_string(request.body()).unwrap();
     println!("Message: {}", message);
-    println!("HMAC key: {}", hmac_key.to_base64(STANDARD));
-    let mut hmac = Hmac::new(Sha512::new(), &hmac_key);
-    hmac.input(message.as_bytes());
-    println!("HMAC digest: {}", hmac.result().code().to_hex());
-    let hmac_hex = hmac.result().code().to_hex();
+    println!(
+        "Body content: {}",
+        serde_json::to_string(request.body()).unwrap()
+    );
+    println!("HMAC key: {:?}", hmac_key);
+
+    let test_sig = "90ae95c5a871e584f8992ef15dd7fd0adba4086594827d7555d53a37cdc3354420e8a3c7627d233eade8229f02b13291d0ca0ec80d592a9670543d404b01a960";
+    println!("Test_sig is: {:?}", test_sig);
+    // Create alias for HMAC-SHA256
+    type HmacSha256 = MyHmac<MySha512>;
+
+    // Create HMAC-SHA256 instance which implements `Mac` trait
+    let mut mac = HmacSha256::new_varkey(hmac_key).expect("HMAC can take key of any size");
+    mac.update(message.as_bytes());
+
+    // `result` has type `Output` which is a thin wrapper around array of
+    // bytes for providing constant time equality check
+    let my_result = mac.finalize();
+
+    // To get underlying array use `into_bytes` method, but be careful, since
+    // incorrect use of the code value may permit timing attacks which defeat
+    // the security provided by the `Output`
+    //     let code_bytes = result.into_bytes();
+    println!("Signature is {}", tfe_signature);
+    let my_result_in_bytes = my_result.into_bytes();
+    let r2 = hex::encode(my_result_in_bytes);
+    println!("r2 is {:?}", r2);
+    println!(
+        "my_result in base64 is {:?}",
+        my_result_in_bytes.to_base64(STANDARD)
+    );
+    println!("my_result is {:?}", my_result_in_bytes);
+    println!("Signature in bytes {:?}", tfe_signature.as_bytes());
+    // println!("mac hex is {}", mac.finalize().code().to_hex());
 
     #[derive(Deserialize, Serialize)]
     struct Payload {
@@ -73,64 +101,23 @@ async fn world(request: Request, _: Context) -> Result<impl IntoResponse, Error>
     let _payload_unwrapped = _payload.unwrap_or_default();
 
     let body_content = if _payload_unwrapped.is_none() {
-        payload = Payload {
-            payload_version: 0,
-            notification_configuration_id: "".to_string(),
-            run_id: "".to_string(),
-            run_message: "".to_string(),
-            run_created_at: "".to_string(),
-            run_created_by: "".to_string(),
-            workspace_id: "".to_string(),
-            workspace_name: "".to_string(),
-            organization_name: "".to_string(),
-        };
-        " EMPTY BODY "
+        message
     } else {
         payload = _payload_unwrapped.unwrap();
-        payload_content.push_str(" >>><<< ");
-        payload_content.push_str(payload.payload_version.to_string().as_str());
-        payload_content.push_str(" >>><<< ");
-        payload_content.push_str(payload.notification_configuration_id.as_str());
-        payload_content.push_str(" >>><<< ");
-        payload_content.push_str(payload.run_id.as_str());
-        payload_content.push_str(" >>><<< ");
-        payload_content.push_str(payload.run_message.as_str());
-        payload_content.push_str(" >>><<< ");
-        payload_content.push_str(payload.run_created_at.as_str());
-        payload_content.push_str(" >>><<< ");
-        payload_content.push_str(payload.run_created_by.as_str());
-        payload_content.push_str(" >>><<< ");
-        payload_content.push_str(payload.workspace_id.as_str());
-        payload_content.push_str(" >>><<< ");
-        payload_content.push_str(payload.workspace_name.as_str());
-        payload_content.push_str(" >>><<< ");
-        payload_content.push_str(payload.organization_name.as_str());
-        payload_content.push_str(" >>><<< ");
-        payload_content.push_str(" HEXXXXXX ");
-        payload_content.push_str(hmac_hex.as_str());
-        payload_content.push_str(" >>><<< ");
-        payload_content.push_str(" MSG ISSS ");
-        payload_content.push_str(" >>><<< ");
-        payload_content.push_str(message.as_str());
+        payload_content.push_str(serde_json::to_string(&payload).unwrap().as_str());
 
-        payload_content.as_str()
+        payload_content
     };
-    let something = header_names
-        + " ____________ "
-        + secret.as_str()
-        + " ____________ "
-        + something_param.get("api_key").unwrap_or(" EMPTY API KEY ")
-        + body_content
-        + serde_json::to_string(&payload).unwrap().as_str();
-    let mut file = File::create("/mnt/efs/foo.txt")?;
-    file.write_all(something.as_bytes())?;
+
+    // let mut file = File::create("/mnt/efs/foo.txt")?;
+    // file.write_all(something.as_bytes())?;
 
     // let contents = "hello world!!!!!!!";
     // `serde_json::Values` impl `IntoResponse` by default
     // creating an application/json response
     Ok(json!({
     "message": "Go Serverless v1.6! In world function. Your function executed successfully!",
-    "contents": "From EFS ".to_owned() + &something
+    "contents": body_content
     }))
 }
 //
@@ -140,10 +127,13 @@ async fn world(request: Request, _: Context) -> Result<impl IntoResponse, Error>
 //
 //     #[tokio::test]
 //     async fn world_handles() {
+//         env::set_var("API_KEY", "123");
+//         env::set_var("TFE_TOKEN", "TFE_TOKEN_VALUE");
+//
 //         let request = Request::default();
 //         let expected = json!({
-//         "message": "Go Serverless v1.3! Your function executed successfully!",
-//         "contents": "From EFS "
+//             "message": "Go Serverless v1.6! In world function. Your function executed successfully!",
+//             "contents": "From EFS"
 //         })
 //         .into_response();
 //         let response = world(request, Context::default())
@@ -153,4 +143,3 @@ async fn world(request: Request, _: Context) -> Result<impl IntoResponse, Error>
 //         assert_eq!(response.body(), expected.body())
 //     }
 // }
-//
