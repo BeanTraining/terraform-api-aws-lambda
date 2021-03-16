@@ -30,36 +30,6 @@ resource "aws_efs_mount_target" "bean" {
   security_groups = [aws_security_group.sg_for_lambda.id]
 }
 
-resource "aws_subnet" "subnet_for_lambda" {
-  vpc_id     = aws_vpc.vpc_for_lambda.id
-  cidr_block = "10.0.1.0/24"
-}
-resource "aws_vpc" "vpc_for_lambda" {
-  cidr_block = "10.0.0.0/16"
-}
-resource "aws_security_group" "sg_for_lambda" {
-  name        = "sg_for_lambdaV1"
-  description = "sg_for_lambda"
-  vpc_id      = aws_vpc.vpc_for_lambda.id
-  ingress {
-    description = "NFS"
-    from_port   = 2049
-    to_port     = 2049
-    protocol    = "tcp"
-    cidr_blocks = [aws_vpc.vpc_for_lambda.cidr_block]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
 /*
 Each Lambda function must have an associated IAM role which dictates what access it has to other AWS services. 
 */
@@ -105,6 +75,7 @@ resource "aws_lambda_function" "bean-notification" {
   function_name = "notification"
   role          = aws_iam_role.iam_for_lambda.arn
   handler       = "notification"
+  timeout       = 12
 
   # The filebase64sha256() function is available in Terraform 0.11.12 and later
   # For Terraform 0.11.11 and earlier, use the base64sha256() function and the file() function:
