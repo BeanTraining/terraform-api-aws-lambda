@@ -1,7 +1,6 @@
 name: Fix terraform file formatting
 
-on:
-  push:
+on: workflow_dispatch
 
 jobs:
   format:

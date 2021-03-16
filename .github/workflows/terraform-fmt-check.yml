@@ -1,7 +1,6 @@
 name: Check Terraform Format
 
 on:
-  push:
   pull_request:
 
 jobs:

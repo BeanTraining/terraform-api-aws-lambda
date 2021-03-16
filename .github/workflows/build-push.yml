@@ -1,6 +1,9 @@
 name: Build and Push
 
-on: push
+on:
+  push:
+    branches:
+      - master
 
 jobs:
   check_lambda_files:

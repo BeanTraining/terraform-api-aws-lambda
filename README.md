@@ -38,7 +38,7 @@ $ npx serverless deploy
 
 ## 🛵 continuous integration and deployment
 
-This template includes an example [GitHub actions](https://travis-ci.org/) [configuration file](.github/workflows/main.yml) which can unlock a virtuous cycle of continuous integration and deployment
+This template includes an example [GitHub actions](https://travis-ci.org/) [configuration file](.github/workflows/build-push.yml) which can unlock a virtuous cycle of continuous integration and deployment
 ( i.e all tests are run on prs and every push to master results in a deployment ).
 
 Store a `AWS_ACCESS_KEY_ID` `AWS_SECRET_ACCESS_KEY` used for aws deployment in your repositories secrets https://github.com/{username}/{my-new-service}/settings/secrets
