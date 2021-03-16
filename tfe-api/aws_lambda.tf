@@ -116,6 +116,7 @@ resource "aws_lambda_function" "bean-notification" {
   environment {
     variables = {
       API_KEY = var.api_key
+      TFE_TOKEN = var.tfe_token
     }
   }
 
