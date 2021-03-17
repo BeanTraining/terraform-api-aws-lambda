@@ -101,8 +101,6 @@ jobs:
         run: |
           npm install
           npx serverless package
-#          aws s3 cp target/lambda/release/hello.zip s3://479284709538-us-west-2-aws-lambda/terraform-api/latest/hello.zip
-#          aws s3 cp target/lambda/release/world.zip s3://479284709538-us-west-2-aws-lambda/terraform-api/latest/world.zip
           aws s3 cp target/lambda/release/notification.zip s3://479284709538-us-west-2-aws-lambda/terraform-api/latest/notification.zip
 #         aws s3 rm --recursive s3://479284709538-us-west-2-aws-lambda/terraform-api/latest
 
