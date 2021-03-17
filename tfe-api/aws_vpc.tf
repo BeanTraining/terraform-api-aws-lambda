@@ -6,7 +6,6 @@ resource "aws_subnet" "subnet_for_lambda" {
 
 resource "aws_vpc" "vpc_for_lambda" {
   cidr_block = "10.0.0.0/16"
-  main_route_table_id = aws_route_table.rt_for_lambda.id
   assign_generated_ipv6_cidr_block = true
     tags = {
     Name = "tfe_api_vpc_for_lambda"
@@ -59,6 +58,11 @@ resource "aws_egress_only_internet_gateway" "eoig_for_lambda" {
 
 resource "aws_route_table_association" "rta_for_lambda" {
   subnet_id      = aws_subnet.subnet_for_lambda.id
+  route_table_id = aws_route_table.rt_for_lambda.id
+}
+
+resource "aws_main_route_table_association" "mrta_for_lambda" {
+  vpc_id         = aws_vpc.vpc_for_lambda.id
   route_table_id = aws_route_table.rt_for_lambda.id
 }
 
