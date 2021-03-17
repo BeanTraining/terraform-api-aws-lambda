@@ -54,3 +54,9 @@ resource "aws_egress_only_internet_gateway" "eoig_for_lambda" {
     Name = "tfe_api_vpc_for_lambda"
   }
 }
+
+resource "aws_route_table_association" "rta_for_lambda" {
+  subnet_id      = aws_subnet.subnet_for_lambda.id
+  route_table_id = aws_route_table.rt_for_lambda.id
+}
+
