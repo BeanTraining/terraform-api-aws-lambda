@@ -85,7 +85,8 @@ $ npx serverless remove
 ```
 
 ## ℹ️  additional information
-
+* Configure your CLion-Rust to use rustfmt https://github.com/intellij-rust/intellij-rust/pull/3490
+  
 * See the [serverless-rust plugin's documentation](https://github.com/softprops/serverless-rust) for more information on plugin usage.
 
 * See the [aws rust runtime's documentation](https://github.com/awslabs/aws-lambda-rust-runtime) for more information on writing Rustlang lambda functions
