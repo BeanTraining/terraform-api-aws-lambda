@@ -5,10 +5,12 @@ resource "aws_subnet" "subnet_for_lambda" {
 }
 resource "aws_vpc" "vpc_for_lambda" {
   cidr_block = "10.0.0.0/16"
+  assign_generated_ipv6_cidr_block = true
     tags = {
     Name = "tfe_api_vpc_for_lambda"
    }
 }
+
 resource "aws_security_group" "sg_for_lambda" {
   name        = "sg_for_lambdaV1"
   description = "sg_for_lambda"
@@ -29,5 +31,26 @@ resource "aws_security_group" "sg_for_lambda" {
   }
   lifecycle {
     create_before_destroy = true
+  }
+}
+
+resource "aws_route_table" "rt_for_lambda" {
+  vpc_id = aws_vpc.vpc_for_lambda.id
+
+  route {
+    ipv6_cidr_block        = "::/0"
+    egress_only_gateway_id = aws_egress_only_internet_gateway.eoig_for_lambda.id
+  }
+
+  tags = {
+    Name = "tfe_api_vpc_for_lambda"
+  }
+}
+
+resource "aws_egress_only_internet_gateway" "eoig_for_lambda" {
+  vpc_id = aws_vpc.vpc_for_lambda.id
+
+  tags = {
+    Name = "tfe_api_vpc_for_lambda"
   }
 }
