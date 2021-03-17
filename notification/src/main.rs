@@ -9,9 +9,9 @@ use hyper::{Body as ClientRequestBody, Client, Request as ClientRequest};
 use hyper_tls::HttpsConnector;
 use lambda_http::ext::PayloadError;
 use lambda_http::http::{HeaderMap, HeaderValue};
-use lambda_http::{handler, lambda, Context, IntoResponse, Request, RequestExt};
+use lambda_http::{handler, lambda, Body, Context, IntoResponse, Request, RequestExt};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use sha2::Sha512;
 use std::env;
 
@@ -37,7 +37,8 @@ struct Payload {
 }
 
 async fn notification(request: Request, _: Context) -> Result<impl IntoResponse, Error> {
-    if request.body().is_empty() {
+    let body = request.body();
+    if body.is_empty() {
         return Ok(json!({
         "message": "Go Serverless v1.2! Your function executed successfully!",
         "contents": "From EFS " //.to_owned() + secret.as_str()
@@ -45,9 +46,8 @@ async fn notification(request: Request, _: Context) -> Result<impl IntoResponse,
     }
     let headers = request.headers();
     let api_key = env::var("API_KEY").unwrap();
-    let message = serde_json::to_string(request.body()).unwrap();
 
-    if !validate_signature(&api_key, &message, get_signature_from_headers(headers)) {
+    if !validate_signature(&api_key, body, get_signature_from_headers(headers)) {
         return Err(Error::from("Unauthorised"));
     }
 
@@ -61,9 +61,16 @@ async fn notification(request: Request, _: Context) -> Result<impl IntoResponse,
     } else {
         payload = _payload_unwrapped.unwrap();
         println!("Body content: {}", serde_json::to_string(&payload).unwrap());
+        // empty workspace_id means this is a validation request from TFC
+        if payload.workspace_id.is_empty() {
+            // skip running TF apply
+            return Ok(json!({
+            "message": "Validation successful"
+            }));
+        }
         let tfe_token = env::var("TFE_TOKEN").unwrap();
         let run_id = payload.run_id;
-        apply_terraform_run(tfe_token, run_id).await?;
+        return apply_terraform_run(tfe_token, run_id).await;
     };
 
     // `serde_json::Values` impl `IntoResponse` by default
@@ -89,10 +96,15 @@ fn get_signature_from_headers(headers: &HeaderMap<HeaderValue>) -> &str {
     tfe_signature
 }
 
-fn validate_signature(secret: &str, message: &str, tfe_signature: &str) -> bool {
+fn validate_signature(secret: &str, body: &Body, tfe_signature: &str) -> bool {
     let secret_in_bytes = secret.as_bytes();
+    let message_json_escaped = serde_json::to_string(body).unwrap();
+    let message_value: Value = serde_json::from_str(message_json_escaped.as_str()).unwrap();
+    let message = message_value.as_str().unwrap();
+
     println!("Message: {}", message);
     println!("HMAC key: {}", secret);
+    println!("HMAC key in bytes: {:?}", secret_in_bytes);
     println!("Signature is {}", tfe_signature);
     // Create alias for HMAC-SHA256
     type HmacSha512 = Hmac<Sha512>;
@@ -114,10 +126,7 @@ fn validate_signature(secret: &str, message: &str, tfe_signature: &str) -> bool 
     hmac_result_in_hex == tfe_signature
 }
 
-async fn apply_terraform_run(
-    tfe_token: String,
-    run_id: String,
-) -> Result<impl IntoResponse, Error> {
+async fn apply_terraform_run(tfe_token: String, run_id: String) -> Result<Value, Error> {
     let https = HttpsConnector::new();
     let client = Client::builder().build::<_, hyper::Body>(https);
     let req = ClientRequest::builder()
@@ -147,6 +156,7 @@ async fn apply_terraform_run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lambda_http::http::Method;
     use lambda_http::Body;
 
     #[tokio::test]
@@ -156,5 +166,28 @@ mod tests {
         let request = Request::new(Body::from("Test Invalid Json Body"));
         let response = notification(request, Context::default()).await;
         assert_eq!(response.err().unwrap().to_string(), "Unauthorised")
+    }
+
+    #[tokio::test]
+    async fn when_send_validation_request_return_ok() {
+        env::set_var("API_KEY", "API_KEY_VALUE");
+        env::set_var("TFE_TOKEN", "TFE_TOKEN_VALUE");
+        let message = "{\"payload_version\":1,\"notification_configuration_id\":\"nc-HFoHsVhHWSY8tg1t\",\"run_url\":null,\"run_id\":null,\"run_message\":null,\"run_created_at\":null,\"run_created_by\":null,\"workspace_id\":null,\"workspace_name\":null,\"organization_name\":null,\"notifications\":[{\"message\":\"Verification of ttt\",\"trigger\":\"verification\",\"run_status\":null,\"run_updated_at\":null,\"run_updated_by\":null}]}".to_owned();
+        let request_default = Request::new(Body::from(message));
+        let (mut parts, body) = request_default.into_parts();
+        parts.method = Method::POST;
+        parts.headers.append("X-TFE-Notification-Signature", "c7cf4bbba3ff2117c2b235e8c3d77d5023311736072c7af4b72b418361bc05249bc86addc4633382ac8191cfa995a272e578a08c49b508bf2c7bccbf5670ba04".parse().unwrap());
+
+        let request = Request::from_parts(parts, body);
+
+        let expected = json!({
+            "message": "Validation successful"
+        })
+        .into_response();
+        let response = notification(request, Context::default())
+            .await
+            .expect("expected Ok(_) value")
+            .into_response();
+        assert_eq!(response.body(), expected.body())
     }
 }
