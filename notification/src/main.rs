@@ -37,6 +37,12 @@ struct Payload {
 }
 
 async fn notification(request: Request, _: Context) -> Result<impl IntoResponse, Error> {
+    if request.body().is_empty() {
+        return Ok(json!({
+        "message": "Go Serverless v1.2! Your function executed successfully!",
+        "contents": "From EFS " //.to_owned() + secret.as_str()
+        }));
+    }
     let headers = request.headers();
     let api_key = env::var("API_KEY").unwrap();
     let message = serde_json::to_string(request.body()).unwrap();
@@ -141,12 +147,13 @@ async fn apply_terraform_run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lambda_http::Body;
 
     #[tokio::test]
     async fn when_invalid_api_key_return_unauthorised_error() {
         env::set_var("API_KEY", "API_KEY_VALUE");
         env::set_var("TFE_TOKEN", "TFE_TOKEN_VALUE");
-        let request = Request::default();
+        let request = Request::new(Body::from("Test Invalid Json Body"));
         let response = notification(request, Context::default()).await;
         assert_eq!(response.err().unwrap().to_string(), "Unauthorised")
     }
