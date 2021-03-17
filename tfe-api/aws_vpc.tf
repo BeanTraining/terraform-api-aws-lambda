@@ -3,8 +3,10 @@ resource "aws_subnet" "subnet_for_lambda" {
   vpc_id     = aws_vpc.vpc_for_lambda.id
   cidr_block = "10.0.1.0/24"
 }
+
 resource "aws_vpc" "vpc_for_lambda" {
   cidr_block = "10.0.0.0/16"
+  main_route_table_id = aws_route_table.rt_for_lambda.id
   assign_generated_ipv6_cidr_block = true
     tags = {
     Name = "tfe_api_vpc_for_lambda"
