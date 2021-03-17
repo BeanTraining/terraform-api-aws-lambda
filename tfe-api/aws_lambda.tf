@@ -28,7 +28,7 @@ resource "aws_iam_role" "iam_for_lambda" {
 }
 EOF
 }
- 
+
 data "aws_s3_bucket_object" "bean-notification" {
   bucket = "479284709538-${var.aws_region}-aws-lambda"
   key    = "terraform-api/latest/notification.zip"
@@ -51,7 +51,7 @@ resource "aws_lambda_function" "bean-notification" {
 
   environment {
     variables = {
-      API_KEY = var.api_key
+      API_KEY   = var.api_key
       TFE_TOKEN = var.tfe_token
     }
   }
