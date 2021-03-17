@@ -9,5 +9,5 @@ variable "api_key" {
 }
 
 variable "tfe_token" {
-  type    = string
+  type = string
 }
