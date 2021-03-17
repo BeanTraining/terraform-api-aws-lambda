@@ -39,7 +39,7 @@ resource "aws_route_table" "rt_for_lambda" {
   vpc_id = aws_vpc.vpc_for_lambda.id
   
   route {
-    cidr_block = aws_vpc.vpc_for_lambda.cidr_block
+    cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.ig_for_lambda.id
   }
 
