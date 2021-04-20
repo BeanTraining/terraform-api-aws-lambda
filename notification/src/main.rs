@@ -40,7 +40,7 @@ async fn notification(request: Request, _: Context) -> Result<impl IntoResponse,
     let body = request.body();
     if body.is_empty() {
         return Ok(json!({
-        "message": "Validation successful"
+        "message": "Empty request body"
         }));
     }
     let headers = request.headers();
@@ -75,8 +75,7 @@ async fn notification(request: Request, _: Context) -> Result<impl IntoResponse,
     // `serde_json::Values` impl `IntoResponse` by default
     // creating an application/json response
     Ok(json!({
-    "message": "Go Serverless v1.2! Your function executed successfully!",
-    "contents": "From EFS " //.to_owned() + secret.as_str()
+    "message": "Validation successful"
     }))
 }
 
